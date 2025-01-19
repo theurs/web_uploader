@@ -1,0 +1,16 @@
+[Unit]
+Description=Bing API Service
+After=network.target wg-quick@wg0.service
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/web_uploader
+ExecStart=/home/ubuntu/.tb1/bin/python3 /home/ubuntu/web_uploader/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
