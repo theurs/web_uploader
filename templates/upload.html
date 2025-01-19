@@ -75,17 +75,41 @@
     </style>
 </head>
 <body>
-    <h1>Загрузка аудиофайла</h1>
+    <h1 id="main-title">Загрузка аудиофайла</h1>
     <div id="upload-message"></div>
     <form id="upload-form" method="post" enctype="multipart/form-data">
         <input type="file" name="file" required><br>
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
-        <button type="submit">Загрузить</button>
+        <button id="upload-button" type="submit">Загрузить</button>
     </form>
 
     <script>
+        const mainTitle = document.getElementById('main-title');
+        const uploadButton = document.getElementById('upload-button');
+
+        // Define text content for different languages
+        const translations = {
+            'ru': {
+                'mainTitle': 'Загрузка аудиофайла',
+                'uploadButton': 'Загрузить'
+            },
+            'en': {
+                'mainTitle': 'Upload audio file',
+                'uploadButton': 'Upload'
+            }
+        };
+
+        // Get browser language
+        const browserLanguage = navigator.language.slice(0, 2); // Get the first two letters of the language code
+        // Set default language to English if the detected language is not supported
+        const lang = translations[browserLanguage] ? browserLanguage : 'en';
+
+        // Update text content
+        mainTitle.textContent = translations[lang].mainTitle;
+        uploadButton.textContent = translations[lang].uploadButton;
+
         document.getElementById('upload-form').addEventListener('submit', function(event) {
             event.preventDefault();
 
@@ -97,7 +121,7 @@
 
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
-            uploadMessage.textContent = 'Идет загрузка...';
+            uploadMessage.textContent = translations[lang]['uploadingMessage'] || 'Идет загрузка...'; // Use default if translation not found
 
             const xhr = new XMLHttpRequest();
             xhr.upload.addEventListener('progress', function(e) {
@@ -113,15 +137,15 @@
 
             xhr.onloadend = function() {
                 if (xhr.status === 200) {
-                    uploadMessage.textContent = 'Загрузка завершена.';
+                    uploadMessage.textContent = translations[lang]['uploadComplete'] || 'Загрузка завершена.'; // Use default if translation not found
                 } else {
-                    uploadMessage.textContent = 'Ошибка загрузки.';
+                    uploadMessage.textContent = translations[lang]['uploadError'] || 'Ошибка загрузки.'; // Use default if translation not found
                     progressBar.style.backgroundColor = 'red';
                 }
             };
 
             xhr.onerror = function() {
-                uploadMessage.textContent = 'Ошибка сети или сервера.';
+                uploadMessage.textContent = translations[lang]['networkError'] || 'Ошибка сети или сервера.'; // Use default if translation not found
                 progressBar.style.backgroundColor = 'red';
             };
 
@@ -140,7 +164,7 @@
                             }
                         } catch (error) {
                             console.error('Ошибка разбора JSON:', error);
-                            alert('Произошла ошибка при обработке ответа сервера.');
+                            alert(translations[lang]['jsonParseError'] || 'Произошла ошибка при обработке ответа сервера.'); // Use default if translation not found
                         }
                     } else {
                         console.error('Ошибка загрузки, статус:', xhr.status);
