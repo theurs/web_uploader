@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка аудиофайла</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #upload-form {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: calc(100% - 60px); /* Адаптивная ширина */
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #progress-container {
+            width: 100%;
+            background-color: #eee;
+            border-radius: 4px;
+            height: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            display: none; /* Скрываем по умолчанию */
+        }
+        #progress-bar {
+            background-color: #4CAF50;
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+        #upload-message {
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            #upload-form {
+                padding: 20px;
+                width: calc(100% - 40px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Загрузка аудиофайла</h1>
+    <div id="upload-message"></div>
+    <form id="upload-form" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required><br>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <button type="submit">Загрузить</button>
+    </form>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const form = this;
+            const formData = new FormData(form);
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const uploadMessage = document.getElementById('upload-message');
+
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            uploadMessage.textContent = 'Идет загрузка...';
+
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percentComplete.toFixed(0) + '%';
+                }
+            });
+
+            xhr.onloadstart = function() {
+                progressBar.style.width = '0%';
+            };
+
+            xhr.onloadend = function() {
+                if (xhr.status === 200) {
+                    uploadMessage.textContent = 'Загрузка завершена.';
+                } else {
+                    uploadMessage.textContent = 'Ошибка загрузки.';
+                    progressBar.style.backgroundColor = 'red';
+                }
+            };
+
+            xhr.onerror = function() {
+                uploadMessage.textContent = 'Ошибка сети или сервера.';
+                progressBar.style.backgroundColor = 'red';
+            };
+
+            xhr.open('POST', '/');
+            xhr.send(formData);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.telegram_link) {
+                                window.open(data.telegram_link, '_blank');
+                            } else {
+                                alert(data.message);
+                            }
+                        } catch (error) {
+                            console.error('Ошибка разбора JSON:', error);
+                            alert('Произошла ошибка при обработке ответа сервера.');
+                        }
+                    } else {
+                        console.error('Ошибка загрузки, статус:', xhr.status);
+                    }
+                }
+            };
+        });
+    </script>
+</body>
+</html>
