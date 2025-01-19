@@ -2,8 +2,5 @@ cfg.py
 __pycache__
 *.log
 *.json
-*.txt
 logs/*
 upload/*
-build/*
-dist/*
