@@ -66,6 +66,16 @@
             font-weight: bold;
             text-align: center;
         }
+        /* Стили для новых элементов */
+        #speed-display, #time-left-display {
+            display: none; /* Скрываем по умолчанию */
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-weight: normal;
+            color: #555;
+            font-size: 0.9em;
+        }
         @media (max-width: 600px) {
             #upload-form {
                 padding: 20px;
@@ -82,22 +92,48 @@
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
+        <div id="speed-display"></div>
+        <div id="time-left-display"></div>
         <button id="upload-button" type="submit">Загрузить</button>
     </form>
 
     <script>
         const mainTitle = document.getElementById('main-title');
         const uploadButton = document.getElementById('upload-button');
+        const uploadForm = document.getElementById('upload-form');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const uploadMessage = document.getElementById('upload-message');
+        const speedDisplay = document.getElementById('speed-display');
+        const timeLeftDisplay = document.getElementById('time-left-display');
 
         // Define text content for different languages
         const translations = {
             'ru': {
                 'mainTitle': 'Загрузка аудиофайла',
-                'uploadButton': 'Загрузить'
+                'uploadButton': 'Загрузить',
+                'uploadingMessage': 'Идет загрузка...',
+                'uploadComplete': 'Загрузка завершена.',
+                'uploadError': 'Ошибка загрузки.',
+                'networkError': 'Ошибка сети или сервера.',
+                'jsonParseError': 'Произошла ошибка при обработке ответа сервера.',
+                'speed': 'Скорость: ',
+                'timeLeft': 'Осталось: ',
+                'calculating': 'Расчет...',
+                'notAvailable': 'н/д'
             },
             'en': {
                 'mainTitle': 'Upload audio file',
-                'uploadButton': 'Upload'
+                'uploadButton': 'Upload',
+                'uploadingMessage': 'Uploading...',
+                'uploadComplete': 'Upload complete.',
+                'uploadError': 'Upload error.',
+                'networkError': 'Network or server error.',
+                'jsonParseError': 'An error occurred while processing the server response.',
+                'speed': 'Speed: ',
+                'timeLeft': 'Time left: ',
+                'calculating': 'Calculating...',
+                'notAvailable': 'N/A'
             }
         };
 
@@ -110,42 +146,85 @@
         mainTitle.textContent = translations[lang].mainTitle;
         uploadButton.textContent = translations[lang].uploadButton;
 
+        // Function to format bytes into human-readable format (e.g., KB, MB)
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Function to format time in seconds into minutes and seconds
+        function formatTime(seconds) {
+            if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return translations[lang]['notAvailable'];
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}m ${remainingSeconds}s`;
+        }
+
+        let startTime; // Переменная для хранения времени начала загрузки
+
         document.getElementById('upload-form').addEventListener('submit', function(event) {
             event.preventDefault();
 
             const form = this;
             const formData = new FormData(form);
-            const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            const uploadMessage = document.getElementById('upload-message');
-
+            
+            // Показываем индикатор прогресса, скорость и оставшееся время
             progressContainer.style.display = 'block';
+            speedDisplay.style.display = 'block';
+            timeLeftDisplay.style.display = 'block';
+
             progressBar.style.width = '0%';
-            uploadMessage.textContent = translations[lang]['uploadingMessage'] || 'Идет загрузка...'; // Use default if translation not found
+            uploadMessage.textContent = translations[lang]['uploadingMessage'];
+            speedDisplay.textContent = translations[lang]['speed'] + translations[lang]['calculating'];
+            timeLeftDisplay.textContent = translations[lang]['timeLeft'] + translations[lang]['calculating'];
+
+            startTime = Date.now(); // Записываем время начала загрузки
 
             const xhr = new XMLHttpRequest();
+
             xhr.upload.addEventListener('progress', function(e) {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
                     progressBar.style.width = percentComplete.toFixed(0) + '%';
+
+                    const currentTime = Date.now();
+                    const elapsedTimeSeconds = (currentTime - startTime) / 1000; // Прошло времени в секундах
+
+                    if (elapsedTimeSeconds > 0) { // Избегаем деления на ноль
+                        const currentSpeed = e.loaded / elapsedTimeSeconds; // Скорость в байтах/секунду
+                        speedDisplay.textContent = translations[lang]['speed'] + formatBytes(currentSpeed) + '/s';
+
+                        const remainingBytes = e.total - e.loaded;
+                        const estimatedTimeSeconds = remainingBytes / currentSpeed; // Оставшееся время в секундах
+                        timeLeftDisplay.textContent = translations[lang]['timeLeft'] + formatTime(estimatedTimeSeconds);
+                    } else {
+                        speedDisplay.textContent = translations[lang]['speed'] + translations[lang]['calculating'];
+                        timeLeftDisplay.textContent = translations[lang]['timeLeft'] + translations[lang]['calculating'];
+                    }
                 }
             });
 
             xhr.onloadstart = function() {
+                // Убедимся, что все сброшено при начале новой загрузки
                 progressBar.style.width = '0%';
+                uploadMessage.textContent = translations[lang]['uploadingMessage'];
+                speedDisplay.textContent = translations[lang]['speed'] + translations[lang]['calculating'];
+                timeLeftDisplay.textContent = translations[lang]['timeLeft'] + translations[lang]['calculating'];
+                startTime = Date.now(); // Снова устанавливаем startTime
             };
 
             xhr.onloadend = function() {
-                if (xhr.status === 200) {
-                    uploadMessage.textContent = translations[lang]['uploadComplete'] || 'Загрузка завершена.'; // Use default if translation not found
-                } else {
-                    uploadMessage.textContent = translations[lang]['uploadError'] || 'Ошибка загрузки.'; // Use default if translation not found
-                    progressBar.style.backgroundColor = 'red';
-                }
+                // В любом случае (успех/ошибка/отмена) скрываем индикаторы
+                progressContainer.style.display = 'none';
+                speedDisplay.style.display = 'none';
+                timeLeftDisplay.style.display = 'none';
             };
 
             xhr.onerror = function() {
-                uploadMessage.textContent = translations[lang]['networkError'] || 'Ошибка сети или сервера.'; // Use default if translation not found
+                uploadMessage.textContent = translations[lang]['networkError'];
                 progressBar.style.backgroundColor = 'red';
             };
 
@@ -160,14 +239,15 @@
                             if (data.telegram_link) {
                                 window.open(data.telegram_link, '_blank');
                             } else {
-                                alert(data.message);
+                                alert(data.message || translations[lang]['uploadComplete']);
                             }
                         } catch (error) {
                             console.error('Ошибка разбора JSON:', error);
-                            alert(translations[lang]['jsonParseError'] || 'Произошла ошибка при обработке ответа сервера.'); // Use default if translation not found
+                            alert(translations[lang]['jsonParseError']);
                         }
                     } else {
                         console.error('Ошибка загрузки, статус:', xhr.status);
+                        // Сообщение об ошибке уже будет установлено в xhr.onerror или xhr.onloadend
                     }
                 }
             };
